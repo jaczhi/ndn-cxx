@@ -418,4 +418,28 @@ RibUnregisterCommand::validateResponse(const ControlParameters& parameters) cons
   }
 }
 
+RibAnnounceCommand::RibAnnounceCommand()
+  : ControlCommand("rib", "announce")
+{
+  // No control parameters are in the request.
+
+  m_responseValidator
+    .required(CONTROL_PARAMETER_NAME)
+    .required(CONTROL_PARAMETER_FACE_ID)
+    .required(CONTROL_PARAMETER_ORIGIN)
+    .required(CONTROL_PARAMETER_COST)
+    .required(CONTROL_PARAMETER_FLAGS)
+    .optional(CONTROL_PARAMETER_EXPIRATION_PERIOD);
+}
+
+void
+RibAnnounceCommand::validateResponse(const ControlParameters& parameters) const
+{
+  this->ControlCommand::validateResponse(parameters);
+
+  if (parameters.getFaceId() == INVALID_FACE_ID) {
+    NDN_THROW(ArgumentError("FaceId must be valid"));
+  }
+}
+
 } // namespace ndn::nfd

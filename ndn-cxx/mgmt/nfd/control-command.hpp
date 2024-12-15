@@ -318,6 +318,21 @@ public:
   validateResponse(const ControlParameters& parameters) const override;
 };
 
+
+/**
+ * \ingroup management
+ * \brief Represents a `rib/announce` command.
+ * \sa https://redmine.named-data.net/projects/nfd/wiki/PrefixAnnouncement
+ */
+ class RibAnnounceCommand : public ControlCommand
+ {
+ public:
+   RibAnnounceCommand();
+
+   void
+   validateResponse(const ControlParameters& parameters) const override;
+ };
+
 } // namespace ndn::nfd
 
 #endif // NDN_CXX_MGMT_NFD_CONTROL_COMMAND_HPP
