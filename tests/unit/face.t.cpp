@@ -80,6 +80,22 @@ protected:
     return static_cast<bool>(result);
   }
 
+/** \brief Execute a prefix announcement, and optionally check the name in callback.
+ *  \return whether the prefix announcement succeeded.
+ */
+  bool
+  runPrefixAnnouncement(std::function<void(const RegisterPrefixSuccessCallback&,
+                                           const RegisterPrefixFailureCallback&)> f)
+  {
+    boost::logic::tribool result = boost::logic::indeterminate;
+    f([&] (auto) { result = true; },
+      [&] (auto, auto) { result = false; });
+
+    advanceClocks(1_ms);
+    BOOST_REQUIRE(!boost::logic::indeterminate(result));
+    return static_cast<bool>(result);
+  }
+
 protected:
   DummyClientFace face;
 };
@@ -575,6 +591,61 @@ BOOST_AUTO_TEST_CASE(Handle)
 }
 
 BOOST_AUTO_TEST_SUITE_END() // RegisterPrefix
+
+BOOST_AUTO_TEST_SUITE(AnnouncePrefix)
+
+BOOST_AUTO_TEST_CASE(Handle)
+{
+  RegisteredPrefixHandle hdl;
+  auto doAnnounce = [&] {
+    return runPrefixAnnouncement([&] (const auto& success, const auto& failure) {
+      hdl = face.announcePrefix("/Hello/World", 1000_ms, std::nullopt, success, failure);
+    });
+  };
+  auto doUnreg = [&] {
+    return runPrefixUnreg([&] (const auto& success, const auto& failure) {
+      hdl.unregister(success, failure);
+    });
+  };
+
+  // despite the "undefined behavior" warning, we try not to crash, but no API guarantee for this
+  BOOST_CHECK(!doUnreg());
+
+  // cancel after unregister
+  BOOST_CHECK(doAnnounce());
+  BOOST_CHECK(doUnreg());
+  hdl.cancel();
+  advanceClocks(1_ms);
+
+  // unregister after cancel
+  BOOST_CHECK(doAnnounce());
+  hdl.cancel();
+  advanceClocks(1_ms);
+  BOOST_CHECK(!doUnreg());
+
+  /*
+  // cancel after destructing face
+  auto face2 = make_unique<DummyClientFace>(m_io, m_keyChain);
+  hdl = face2->registerPrefix("/Hello/World/2", nullptr,
+  [] (auto&&...) { BOOST_FAIL("Unexpected failure"); });
+  advanceClocks(1_ms);
+  face2.reset();
+  advanceClocks(1_ms);
+  hdl.cancel(); // should not crash
+  advanceClocks(1_ms);
+
+  // unregister after destructing face
+  auto face3 = make_unique<DummyClientFace>(m_io, m_keyChain);
+  hdl = face3->registerPrefix("/Hello/World/3", nullptr,
+  [] (auto&&...) { BOOST_FAIL("Unexpected failure"); });
+  advanceClocks(1_ms);
+  face3.reset();
+  advanceClocks(1_ms);
+  BOOST_CHECK(!doUnreg());
+  */
+}
+
+BOOST_AUTO_TEST_SUITE_END() // AnnouncePrefix
 
 BOOST_AUTO_TEST_SUITE(SetInterestFilter)
 

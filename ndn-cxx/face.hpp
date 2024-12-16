@@ -353,8 +353,8 @@ public: // producer
                  const std::optional<security::ValidityPeriod>& validityPeriod,
                  const RegisterPrefixSuccessCallback& onSuccess,
                  const RegisterPrefixFailureCallback& onFailure,
-                 const security::SigningInfo& signingInfo,
-                 const security::SigningInfo& prefixAnnouncementSigningInfo);
+                 const security::SigningInfo& signingInfo = security::SigningInfo(),
+                 const security::SigningInfo& prefixAnnouncementSigningInfo = security::SigningInfo());
 
   /**
    * @brief Publish a Data packet.
