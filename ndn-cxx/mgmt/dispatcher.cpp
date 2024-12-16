@@ -19,6 +19,7 @@
  * See AUTHORS.md for complete list of ndn-cxx authors and contributors.
  */
 
+#include "ndn-cxx/encoding/tlv-nfd.hpp"
 #include "ndn-cxx/mgmt/dispatcher.hpp"
 #include "ndn-cxx/lp/tags.hpp"
 #include "ndn-cxx/util/logger.hpp"
@@ -179,11 +180,17 @@ Dispatcher::processControlCommandInterest(const Name& prefix,
   const name::Component& pc = interest.getName().get(parametersLoc);
 
   shared_ptr<ControlParameters> parameters;
-  try {
-    parameters = parser(pc);
+  if (pc.isParametersSha256Digest() && interest.hasApplicationParameters()) {
+    // The control command uses application parameters only
+    parameters = parser(name::Component(tlv::GenericNameComponent));
   }
-  catch (const tlv::Error&) {
-    return;
+  else {
+    try {
+      parameters = parser(pc);
+    }
+    catch (const tlv::Error&) {
+      return;
+    }
   }
 
   AcceptContinuation accept = [=] (const auto& req) { accepted(req, prefix, interest, parameters); };
