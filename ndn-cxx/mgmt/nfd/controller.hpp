@@ -25,6 +25,7 @@
 #include "ndn-cxx/mgmt/nfd/command-options.hpp"
 #include "ndn-cxx/mgmt/nfd/control-command.hpp"
 #include "ndn-cxx/mgmt/nfd/control-response.hpp"
+#include  "ndn-cxx/prefix-announcement.hpp"
 #include "ndn-cxx/security/interest-signer.hpp"
 #include "ndn-cxx/security/key-chain.hpp"
 #include "ndn-cxx/security/validator-null.hpp"
@@ -96,7 +97,20 @@ public:
         const CommandFailureCallback& onFailure,
         const CommandOptions& options = {})
   {
-    startCommand(std::make_shared<Command>(), parameters, onSuccess, onFailure, options);
+    startCommand(std::make_shared<Command>(), std::ref(parameters), onSuccess, onFailure, options);
+  }
+
+  /**
+ * \brief Start command execution.
+ */
+  template<typename Command>
+  void
+  start(const PrefixAnnouncement& prefixAnnouncement,
+        const CommandSuccessCallback& onSuccess,
+        const CommandFailureCallback& onFailure,
+        const CommandOptions& options = {})
+  {
+    startCommand(std::make_shared<Command>(), std::ref(prefixAnnouncement), onSuccess, onFailure, options);
   }
 
   /**
@@ -127,7 +141,8 @@ public:
 private:
   void
   startCommand(const shared_ptr<ControlCommand>& command,
-               const ControlParameters& parameters,
+               const std::variant<std::reference_wrapper<const ControlParameters>,
+                 std::reference_wrapper<const PrefixAnnouncement>>& commandInfo,
                const CommandSuccessCallback& onSuccess,
                const CommandFailureCallback& onFailure,
                const CommandOptions& options);

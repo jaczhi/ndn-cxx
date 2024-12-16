@@ -47,4 +47,11 @@ CommandOptions::setSigningInfo(security::SigningInfo signingInfo)
   return *this;
 }
 
+CommandOptions&
+CommandOptions::setPrefixAnnouncementSigningInfo(security::SigningInfo prefixAnnouncementSigningInfo)
+{
+  m_prefixAnnouncementSigningInfo = std::move(prefixAnnouncementSigningInfo);
+  return *this;
+}
+
 } // namespace ndn::nfd

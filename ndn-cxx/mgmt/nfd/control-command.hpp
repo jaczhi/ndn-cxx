@@ -73,6 +73,12 @@ public:
   Name
   getRequestName(const Name& commandPrefix, const ControlParameters& parameters) const;
 
+  /** \brief Construct the Name for a request Interest.
+   *  \throw ArgumentError if parameters are invalid
+   */
+  Name
+  getRequestName(const Name& commandPrefix, const Block& applicationParameters) const;
+
 protected:
   ControlCommand(const std::string& module, const std::string& verb);
 

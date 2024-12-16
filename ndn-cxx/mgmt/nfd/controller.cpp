@@ -44,13 +44,26 @@ Controller::~Controller()
 
 void
 Controller::startCommand(const shared_ptr<ControlCommand>& command,
-                         const ControlParameters& parameters,
+                         const std::variant<std::reference_wrapper<const ControlParameters>,
+                           std::reference_wrapper<const PrefixAnnouncement>>& commandInfo,
                          const CommandSuccessCallback& onSuccess,
                          const CommandFailureCallback& onFailure,
                          const CommandOptions& options)
 {
   Interest interest;
-  interest.setName(command->getRequestName(options.getPrefix(), parameters));
+  if (std::holds_alternative<std::reference_wrapper<const ControlParameters>>(commandInfo)) {
+    const ControlParameters& parameters = std::get<std::reference_wrapper<const ControlParameters>>(commandInfo).get();
+    interest.setName(command->getRequestName(options.getPrefix(), parameters));
+  }
+  else {
+    const PrefixAnnouncement& prefixAnnouncement = std::get<std::reference_wrapper<const PrefixAnnouncement>>(commandInfo).get();
+    const Data& applicationParameters = prefixAnnouncement.toData(m_keyChain, options.getPrefixAnnouncementSigningInfo(),
+                                                            std::nullopt);
+    const Block& encodedAnnouncement = applicationParameters.wireEncode();
+    interest.setApplicationParameters(encodedAnnouncement);
+    interest.setName(command->getRequestName(options.getPrefix(), encodedAnnouncement));
+  }
+
   interest.setInterestLifetime(options.getTimeout());
   m_signer.makeSignedInterest(interest, options.getSigningInfo());
 

@@ -304,6 +304,50 @@ public: // prefix registration
     });
   }
 
+  detail::RecordId
+  announcePrefix(const Name& prefix,
+                 const time::milliseconds& expiration,
+                 const std::optional<security::ValidityPeriod>& validityPeriod,
+                 const RegisterPrefixSuccessCallback& onSuccess,
+                 const RegisterPrefixFailureCallback& onFailure,
+                 const nfd::CommandOptions& options,
+                 const std::optional<InterestFilter>& filter,
+                 const InterestCallback& onInterest)
+  {
+    NDN_LOG_INFO("announcing prefix: " << prefix);
+    auto id = m_registeredPrefixTable.allocateId();
+
+    PrefixAnnouncement prefixAnnouncement;
+    prefixAnnouncement.setAnnouncedName(prefix)
+                      .setExpiration(expiration)
+                      .setValidityPeriod(validityPeriod);
+
+    m_nfdController.start<nfd::RibAnnounceCommand>(
+      prefixAnnouncement,
+      [=] (const nfd::ControlParameters&) {
+        NDN_LOG_INFO("announced prefix: " << prefix);
+
+        detail::RecordId filterId = 0;
+        if (filter) {
+          NDN_LOG_INFO("setting InterestFilter: " << *filter);
+          auto& filterRecord = m_interestFilterTable.insert(*filter, onInterest);
+          filterId = filterRecord.getId();
+        }
+        m_registeredPrefixTable.put(id, prefix, options, filterId);
+
+        if (onSuccess) {
+          onSuccess(prefix);
+        }
+      },
+      [=] (const nfd::ControlResponse& resp) {
+        NDN_LOG_INFO("announce prefix failed: " << prefix);
+        onFailure(prefix, resp.getText());
+      },
+      options);
+
+    return id;
+  }
+
 public: // IO routine
   void
   ensureConnected(bool wantResume)

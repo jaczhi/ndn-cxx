@@ -20,6 +20,7 @@
  */
 
 #include "ndn-cxx/mgmt/nfd/control-command.hpp"
+#include "ndn-cxx/util/sha256.hpp"
 
 namespace ndn::nfd {
 
@@ -63,6 +64,20 @@ ControlCommand::getRequestName(const Name& commandPrefix,
          .append(m_module)
          .append(m_verb)
          .append(parameters.wireEncode());
+}
+
+Name
+ControlCommand::getRequestName(const Name& commandPrefix,
+                               const Block& applicationParameters) const
+{
+  if (!applicationParameters.hasWire() || !applicationParameters.isValid()) {
+    NDN_THROW(ArgumentError("ApplicationParameters must be valid and have a wire representation"));
+  }
+
+  return Name(commandPrefix)
+         .append(m_module)
+         .append(m_verb)
+         .appendParametersSha256Digest(ndn::util::Sha256().computeDigest(applicationParameters));
 }
 
 ControlCommand::FieldValidator::FieldValidator()

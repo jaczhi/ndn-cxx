@@ -340,6 +340,23 @@ public: // producer
                  uint64_t flags = nfd::ROUTE_FLAG_CHILD_INHERIT);
 
   /**
+   * @brief foo bar baz
+   * @param prefix
+   * @param onSuccess
+   * @param onFailure
+   * @param signingInfo
+   * @return
+   */
+  RegisteredPrefixHandle
+  announcePrefix(const Name& prefix,
+                 const time::milliseconds& expiration,
+                 const std::optional<security::ValidityPeriod>& validityPeriod,
+                 const RegisterPrefixSuccessCallback& onSuccess,
+                 const RegisterPrefixFailureCallback& onFailure,
+                 const security::SigningInfo& signingInfo,
+                 const security::SigningInfo& prefixAnnouncementSigningInfo);
+
+  /**
    * @brief Publish a Data packet.
    * @param data The Data packet; a copy will be made, so that the caller is not required to
    *             maintain the argument unchanged.

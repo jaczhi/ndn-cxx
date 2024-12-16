@@ -92,6 +92,22 @@ public:
   CommandOptions&
   setSigningInfo(security::SigningInfo signingInfo);
 
+  /**
+   * \brief Returns the signing parameters for the Prefix Announcement object.
+   */
+  const security::SigningInfo&
+  getPrefixAnnouncementSigningInfo() const
+  {
+    return m_prefixAnnouncementSigningInfo;
+  }
+
+  /**
+   * \brief Sets the signing parameters for the Prefix Announcement object.
+   * \return self
+   */
+  CommandOptions&
+  setPrefixAnnouncementSigningInfo(security::SigningInfo prefixAnnouncementSigningInfo);
+
 public:
   /// The default command timeout: 10 seconds.
   static constexpr time::milliseconds DEFAULT_TIMEOUT = 10_s;
@@ -103,6 +119,7 @@ private:
   time::milliseconds m_timeout = DEFAULT_TIMEOUT;
   Name m_prefix = DEFAULT_PREFIX;
   security::SigningInfo m_signingInfo;
+  security::SigningInfo m_prefixAnnouncementSigningInfo;
 };
 
 } // namespace ndn::nfd

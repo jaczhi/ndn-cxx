@@ -252,6 +252,24 @@ Face::registerPrefix(const Name& prefix,
   return RegisteredPrefixHandle(m_impl, id);
 }
 
+RegisteredPrefixHandle
+Face::announcePrefix(const Name& prefix,
+                     const time::milliseconds& expiration,
+                     const std::optional<security::ValidityPeriod>& validityPeriod,
+                     const RegisterPrefixSuccessCallback& onSuccess,
+                     const RegisterPrefixFailureCallback& onFailure,
+                     const security::SigningInfo& signingInfo,
+                     const security::SigningInfo& prefixAnnouncementSigningInfo)
+{
+  nfd::CommandOptions options;
+  options.setSigningInfo(signingInfo);
+  options.setPrefixAnnouncementSigningInfo(prefixAnnouncementSigningInfo);
+
+  auto id = m_impl->announcePrefix(prefix, expiration, validityPeriod, onSuccess, onFailure, options, std::nullopt,
+                                   nullptr);
+  return RegisteredPrefixHandle(m_impl, id);
+}
+
 void
 Face::doProcessEvents(time::milliseconds timeout, bool keepRunning)
 {
