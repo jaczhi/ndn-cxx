@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2023 Regents of the University of California.
+ * Copyright (c) 2013-2024 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -19,7 +19,6 @@
  * See AUTHORS.md for complete list of ndn-cxx authors and contributors.
  */
 
-#include "ndn-cxx/encoding/tlv-nfd.hpp"
 #include "ndn-cxx/mgmt/dispatcher.hpp"
 #include "ndn-cxx/lp/tags.hpp"
 #include "ndn-cxx/util/logger.hpp"
@@ -180,7 +179,7 @@ Dispatcher::processControlCommandInterest(const Name& prefix,
   const name::Component& pc = interest.getName().get(parametersLoc);
 
   shared_ptr<ControlParameters> parameters;
-  if (pc.isParametersSha256Digest() && interest.hasApplicationParameters()) {
+  if (!pc.isGeneric() && interest.hasApplicationParameters()) {
     // The control command uses application parameters only
     parameters = parser(name::Component(tlv::GenericNameComponent));
   }
