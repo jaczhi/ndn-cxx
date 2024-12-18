@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2024 Regents of the University of California.
+ * Copyright (c) 2013-2023 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -179,17 +179,11 @@ Dispatcher::processControlCommandInterest(const Name& prefix,
   const name::Component& pc = interest.getName().get(parametersLoc);
 
   shared_ptr<ControlParameters> parameters;
-  if (!pc.isGeneric() && interest.hasApplicationParameters()) {
-    // The control command uses application parameters only
-    parameters = parser(name::Component(tlv::GenericNameComponent));
+  try {
+    parameters = parser(pc);
   }
-  else {
-    try {
-      parameters = parser(pc);
-    }
-    catch (const tlv::Error&) {
-      return;
-    }
+  catch (const tlv::Error&) {
+    return;
   }
 
   AcceptContinuation accept = [=] (const auto& req) { accepted(req, prefix, interest, parameters); };
