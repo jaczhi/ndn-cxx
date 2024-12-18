@@ -594,6 +594,14 @@ BOOST_AUTO_TEST_SUITE_END() // RegisterPrefix
 
 BOOST_AUTO_TEST_SUITE(AnnouncePrefix)
 
+BOOST_FIXTURE_TEST_CASE(Failure, FaceFixture<NoPrefixRegReply>)
+{
+  BOOST_CHECK(!runPrefixAnnouncement([&] (const auto& success, const auto& failure) {
+    face.announcePrefix("/Hello/World", 10000_ms, std::nullopt, success, failure);
+    this->advanceClocks(5_s, 20); // wait for command timeout
+  }));
+}
+
 BOOST_AUTO_TEST_CASE(Handle)
 {
   RegisteredPrefixHandle hdl;
@@ -623,10 +631,9 @@ BOOST_AUTO_TEST_CASE(Handle)
   advanceClocks(1_ms);
   BOOST_CHECK(!doUnreg());
 
-  /*
   // cancel after destructing face
   auto face2 = make_unique<DummyClientFace>(m_io, m_keyChain);
-  hdl = face2->registerPrefix("/Hello/World/2", nullptr,
+  hdl = face2->announcePrefix("/Hello/World/2", 1000_ms, std::nullopt, nullptr,
   [] (auto&&...) { BOOST_FAIL("Unexpected failure"); });
   advanceClocks(1_ms);
   face2.reset();
@@ -636,13 +643,12 @@ BOOST_AUTO_TEST_CASE(Handle)
 
   // unregister after destructing face
   auto face3 = make_unique<DummyClientFace>(m_io, m_keyChain);
-  hdl = face3->registerPrefix("/Hello/World/3", nullptr,
+  hdl = face3->announcePrefix("/Hello/World/3", 1000_ms, std::nullopt, nullptr,
   [] (auto&&...) { BOOST_FAIL("Unexpected failure"); });
   advanceClocks(1_ms);
   face3.reset();
   advanceClocks(1_ms);
   BOOST_CHECK(!doUnreg());
-  */
 }
 
 BOOST_AUTO_TEST_SUITE_END() // AnnouncePrefix
