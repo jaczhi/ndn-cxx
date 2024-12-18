@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2023 Regents of the University of California.
+ * Copyright (c) 2013-2024 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -519,9 +519,8 @@ BOOST_AUTO_TEST_CASE(RibAnnounce)
   prefixAnnouncement.setExpiration(1000_ms);
   // Dummy keychain
   KeyChain keyChain;
-  const Data& data = prefixAnnouncement.toData(keyChain);
   Name n1;
-  BOOST_CHECK_NO_THROW(n1 = command.getRequestName("/PREFIX", data.wireEncode()));
+  BOOST_CHECK_NO_THROW(n1 = command.getRequestName("/PREFIX"));
   BOOST_CHECK(Name("ndn:/PREFIX/rib/announce").isPrefixOf(n1));
 
   // Good request, bad response (FaceId must be valid)

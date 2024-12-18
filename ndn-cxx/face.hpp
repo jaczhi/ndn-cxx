@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2023 Regents of the University of California.
+ * Copyright (c) 2013-2024 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -340,12 +340,21 @@ public: // producer
                  uint64_t flags = nfd::ROUTE_FLAG_CHILD_INHERIT);
 
   /**
-   * @brief foo bar baz
-   * @param prefix
-   * @param onSuccess
-   * @param onFailure
-   * @param signingInfo
-   * @return
+   * @brief Register prefix with the connected NDN forwarder using the Prefix Announcement protocol.
+   * @param prefix                        A prefix to register with the connected NDN forwarder
+   * @param expiration                    The duration for which the prefix announcement remains valid
+   * @param validityPeriod                The absolute time range in which the prefix announcement remains valid, or
+   *                                      `std::nullopt`. When both ExpirationPeriod and ValidityPeriod are present, the
+   *                                      most restrictive constraint applies.
+   * @param onSuccess                     A callback to be called when prefixRegister command succeeds
+   * @param onFailure                     A callback to be called when prefixRegister command fails
+   * @param signingInfo                   Signing parameters for the Interest. When omitted, default parameters will be
+   *                                      used.
+   * @param prefixAnnouncementSigningInfo Signing parameters for the Prefix Announcement object to be included in the
+   *                                      ApplicationParameters of the interest. When omitted, default parameters will
+   *                                      be used.
+   *
+   * @return A handle for unregistering the prefix.
    */
   RegisteredPrefixHandle
   announcePrefix(const Name& prefix,

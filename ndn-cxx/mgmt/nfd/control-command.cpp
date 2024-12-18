@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2023 Regents of the University of California.
+ * Copyright (c) 2013-2024 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -20,7 +20,6 @@
  */
 
 #include "ndn-cxx/mgmt/nfd/control-command.hpp"
-#include "ndn-cxx/util/sha256.hpp"
 
 namespace ndn::nfd {
 
@@ -55,6 +54,14 @@ ControlCommand::applyDefaultsToResponse(ControlParameters&) const
 }
 
 Name
+ControlCommand::getRequestName(const Name& commandPrefix) const
+{
+  return Name(commandPrefix)
+    .append(m_module)
+    .append(m_verb);
+}
+
+Name
 ControlCommand::getRequestName(const Name& commandPrefix,
                                const ControlParameters& parameters) const
 {
@@ -64,20 +71,6 @@ ControlCommand::getRequestName(const Name& commandPrefix,
          .append(m_module)
          .append(m_verb)
          .append(parameters.wireEncode());
-}
-
-Name
-ControlCommand::getRequestName(const Name& commandPrefix,
-                               const Block& applicationParameters) const
-{
-  if (!applicationParameters.hasWire() || !applicationParameters.isValid()) {
-    NDN_THROW(ArgumentError("ApplicationParameters must be valid and have a wire representation"));
-  }
-
-  return Name(commandPrefix)
-         .append(m_module)
-         .append(m_verb)
-         .appendParametersSha256Digest(ndn::util::Sha256().computeDigest(applicationParameters));
 }
 
 ControlCommand::FieldValidator::FieldValidator()

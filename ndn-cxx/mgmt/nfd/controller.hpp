@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2023 Regents of the University of California.
+ * Copyright (c) 2013-2024 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -25,7 +25,7 @@
 #include "ndn-cxx/mgmt/nfd/command-options.hpp"
 #include "ndn-cxx/mgmt/nfd/control-command.hpp"
 #include "ndn-cxx/mgmt/nfd/control-response.hpp"
-#include  "ndn-cxx/prefix-announcement.hpp"
+#include "ndn-cxx/prefix-announcement.hpp"
 #include "ndn-cxx/security/interest-signer.hpp"
 #include "ndn-cxx/security/key-chain.hpp"
 #include "ndn-cxx/security/validator-null.hpp"
@@ -88,7 +88,7 @@ public:
   ~Controller();
 
   /**
-   * \brief Start command execution.
+   * \brief Start command execution. This overload is used if the command has control parameters only.
    */
   template<typename Command>
   void
@@ -101,7 +101,7 @@ public:
   }
 
   /**
- * \brief Start command execution.
+ * \brief Start command execution. This overload is used if the command is a prefix announcement.
  */
   template<typename Command>
   void

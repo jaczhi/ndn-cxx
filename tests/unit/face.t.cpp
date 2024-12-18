@@ -80,9 +80,9 @@ protected:
     return static_cast<bool>(result);
   }
 
-/** \brief Execute a prefix announcement, and optionally check the name in callback.
- *  \return whether the prefix announcement succeeded.
- */
+  /** \brief Execute a prefix announcement, and optionally check the name in callback.
+   *  \return whether the prefix announcement succeeded.
+   */
   bool
   runPrefixAnnouncement(std::function<void(const RegisterPrefixSuccessCallback&,
                                            const RegisterPrefixFailureCallback&)> f)

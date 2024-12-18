@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2023 Regents of the University of California.
+ * Copyright (c) 2013-2024 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -45,7 +45,7 @@ Controller::~Controller()
 void
 Controller::startCommand(const shared_ptr<ControlCommand>& command,
                          const std::variant<std::reference_wrapper<const ControlParameters>,
-                           std::reference_wrapper<const PrefixAnnouncement>>& commandInfo,
+                                            std::reference_wrapper<const PrefixAnnouncement>>& commandInfo,
                          const CommandSuccessCallback& onSuccess,
                          const CommandFailureCallback& onFailure,
                          const CommandOptions& options)
@@ -61,7 +61,7 @@ Controller::startCommand(const shared_ptr<ControlCommand>& command,
                                                             std::nullopt);
     const Block& encodedAnnouncement = applicationParameters.wireEncode();
     interest.setApplicationParameters(encodedAnnouncement);
-    interest.setName(command->getRequestName(options.getPrefix(), encodedAnnouncement));
+    interest.setName(command->getRequestName(options.getPrefix()));
   }
 
   interest.setInterestLifetime(options.getTimeout());

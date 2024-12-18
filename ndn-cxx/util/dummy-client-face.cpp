@@ -225,9 +225,7 @@ DummyClientFace::enableRegistrationReply(uint64_t faceId)
       auto prefixAnnouncement = ndn::PrefixAnnouncement(data);
 
       params.setName(prefixAnnouncement.getAnnouncedName());
-      // TODO fix nullptr deref
-      //params.setFaceId(*(interest.getTag<lp::IncomingFaceIdTag>()));
-      params.setFaceId(555);
+      params.setFaceId(faceId);
       params.setOrigin(ndn::nfd::ROUTE_ORIGIN_PREFIXANN);
       params.setCost(2048);
       params.setFlags(ndn::nfd::ROUTE_FLAG_CHILD_INHERIT);
