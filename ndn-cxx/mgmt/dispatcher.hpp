@@ -468,7 +468,7 @@ Dispatcher::addControlCommand(const PartialName& relPrefix,
   }
 
   ControlParametersParser parser = [] (const name::Component& comp) -> shared_ptr<ControlParameters> {
-    return make_shared<CP>(comp.blockFromValue());
+    return comp.isGeneric() ? make_shared<CP>(comp.blockFromValue()) : make_shared<CP>();
   };
   AuthorizationAcceptedCallback accepted = [this, validate = std::move(validate),
                                             handle = std::move(handle)] (auto&&... args) {

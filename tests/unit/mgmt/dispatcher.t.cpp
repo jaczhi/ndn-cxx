@@ -49,6 +49,8 @@ public:
 class VoidParameters : public mgmt::ControlParameters
 {
 public:
+  VoidParameters() {}
+
   explicit
   VoidParameters(const Block& wire)
   {
@@ -233,6 +235,8 @@ BOOST_AUTO_TEST_CASE(ControlCommand)
 class StatefulParameters : public mgmt::ControlParameters
 {
 public:
+  StatefulParameters() {}
+
   explicit
   StatefulParameters(const Block& wire)
   {
