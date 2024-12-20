@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2024 Regents of the University of California.
+ * Copyright (c) 2013-2023 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -44,13 +44,6 @@ CommandOptions&
 CommandOptions::setSigningInfo(security::SigningInfo signingInfo)
 {
   m_signingInfo = std::move(signingInfo);
-  return *this;
-}
-
-CommandOptions&
-CommandOptions::setPrefixAnnouncementSigningInfo(security::SigningInfo prefixAnnouncementSigningInfo)
-{
-  m_prefixAnnouncementSigningInfo = std::move(prefixAnnouncementSigningInfo);
   return *this;
 }
 

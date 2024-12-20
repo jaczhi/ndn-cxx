@@ -29,6 +29,7 @@
 #include "ndn-cxx/detail/cancel-handle.hpp"
 #include "ndn-cxx/encoding/nfd-constants.hpp"
 #include "ndn-cxx/lp/nack.hpp"
+#include "ndn-cxx/prefix-announcement.hpp"
 #include "ndn-cxx/security/key-chain.hpp"
 #include "ndn-cxx/security/signing-info.hpp"
 
@@ -94,6 +95,14 @@ public:
   {
   public:
     using std::runtime_error::runtime_error;
+  };
+
+  /** \brief Represents an error in parameters provided to a Face method.
+    */
+  class ArgumentError : public std::invalid_argument
+  {
+  public:
+    using std::invalid_argument::invalid_argument;
   };
 
   /**
@@ -338,6 +347,23 @@ public: // producer
                  const RegisterPrefixFailureCallback& onFailure,
                  const security::SigningInfo& signingInfo = security::SigningInfo(),
                  uint64_t flags = nfd::ROUTE_FLAG_CHILD_INHERIT);
+
+  /**
+   * @brief Register prefix with the connected NDN forwarder using the Prefix Announcement protocol.
+   * @param prefixAnnouncement The signed Prefix Announcement object to send to the forwarder
+   * @param onSuccess          A callback to be called when prefixRegister command succeeds
+   * @param onFailure          A callback to be called when prefixRegister command fails
+   * @param signingInfo        Signing parameters for the Interest. When omitted, default parameters will be used.
+   *
+   * @return A handle for unregistering the prefix.
+   * @throw ArgumentError The Prefix Announcement object has not been signed and has no wire representation (e.g., by
+   *                      calling `.toData()`).
+   */
+  RegisteredPrefixHandle
+  announcePrefix(const PrefixAnnouncement& prefixAnnouncement,
+                 const RegisterPrefixSuccessCallback& onSuccess,
+                 const RegisterPrefixFailureCallback& onFailure,
+                 const security::SigningInfo& signingInfo = security::SigningInfo());
 
   /**
    * @brief Register prefix with the connected NDN forwarder using the Prefix Announcement protocol.

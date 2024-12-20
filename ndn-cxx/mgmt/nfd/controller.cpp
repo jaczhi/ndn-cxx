@@ -57,8 +57,7 @@ Controller::startCommand(const shared_ptr<ControlCommand>& command,
   }
   else {
     const PrefixAnnouncement& prefixAnnouncement = std::get<std::reference_wrapper<const PrefixAnnouncement>>(commandInfo).get();
-    const Data& applicationParameters = prefixAnnouncement.toData(m_keyChain, options.getPrefixAnnouncementSigningInfo(),
-                                                            std::nullopt);
+    const Data& applicationParameters = prefixAnnouncement.getData().value();
     const Block& encodedAnnouncement = applicationParameters.wireEncode();
     interest.setApplicationParameters(encodedAnnouncement);
     interest.setName(command->getRequestName(options.getPrefix()));

@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2023 Regents of the University of California.
+ * Copyright (c) 2013-2024 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -67,6 +67,7 @@ public:
     : m_face(face)
     , m_scheduler(m_face.getIoContext())
     , m_nfdController(m_face, keyChain)
+    , m_keyChain(keyChain)
   {
     auto onEmptyPitOrNoRegisteredPrefixes = [this] {
       // Without this extra "post", transport can get paused (-async_read) and then resumed
@@ -304,23 +305,24 @@ public: // prefix registration
     });
   }
 
+  void
+  signPrefixAnnouncement(PrefixAnnouncement& prefixAnnouncement,
+                         const security::SigningInfo& prefixAnnouncementSigningInfo)
+  {
+    prefixAnnouncement.toData(m_keyChain, prefixAnnouncementSigningInfo);
+  }
+
   detail::RecordId
-  announcePrefix(const Name& prefix,
-                 const time::milliseconds& expiration,
-                 const std::optional<security::ValidityPeriod>& validityPeriod,
+  announcePrefix(const PrefixAnnouncement& prefixAnnouncement,
                  const RegisterPrefixSuccessCallback& onSuccess,
                  const RegisterPrefixFailureCallback& onFailure,
                  const nfd::CommandOptions& options,
                  const std::optional<InterestFilter>& filter,
                  const InterestCallback& onInterest)
   {
+    const Name& prefix = prefixAnnouncement.getAnnouncedName();
     NDN_LOG_INFO("announcing prefix: " << prefix);
     auto id = m_registeredPrefixTable.allocateId();
-
-    PrefixAnnouncement prefixAnnouncement;
-    prefixAnnouncement.setAnnouncedName(prefix)
-                      .setExpiration(expiration)
-                      .setValidityPeriod(validityPeriod);
 
     m_nfdController.start<nfd::RibAnnounceCommand>(
       prefixAnnouncement,
@@ -459,6 +461,7 @@ private:
   Scheduler m_scheduler;
   scheduler::ScopedEventId m_processEventsTimeoutEvent;
   nfd::Controller m_nfdController;
+  KeyChain& m_keyChain;
 
   detail::RecordContainer<PendingInterest> m_pendingInterestTable;
   detail::RecordContainer<InterestFilterRecord> m_interestFilterTable;

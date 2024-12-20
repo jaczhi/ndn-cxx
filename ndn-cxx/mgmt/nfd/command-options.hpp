@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2024 Regents of the University of California.
+ * Copyright (c) 2013-2023 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -92,22 +92,6 @@ public:
   CommandOptions&
   setSigningInfo(security::SigningInfo signingInfo);
 
-  /**
-   * \brief Returns the signing parameters for the Prefix Announcement object.
-   */
-  const security::SigningInfo&
-  getPrefixAnnouncementSigningInfo() const
-  {
-    return m_prefixAnnouncementSigningInfo;
-  }
-
-  /**
-   * \brief Sets the signing parameters for the Prefix Announcement object.
-   * \return self
-   */
-  CommandOptions&
-  setPrefixAnnouncementSigningInfo(security::SigningInfo prefixAnnouncementSigningInfo);
-
 public:
   /// The default command timeout: 10 seconds.
   static constexpr time::milliseconds DEFAULT_TIMEOUT = 10_s;
@@ -119,7 +103,6 @@ private:
   time::milliseconds m_timeout = DEFAULT_TIMEOUT;
   Name m_prefix = DEFAULT_PREFIX;
   security::SigningInfo m_signingInfo;
-  security::SigningInfo m_prefixAnnouncementSigningInfo;
 };
 
 } // namespace ndn::nfd

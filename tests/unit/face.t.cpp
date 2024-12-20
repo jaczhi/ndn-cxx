@@ -605,11 +605,16 @@ BOOST_FIXTURE_TEST_CASE(Failure, FaceFixture<NoPrefixRegReply>)
 BOOST_AUTO_TEST_CASE(Handle)
 {
   RegisteredPrefixHandle hdl;
+  PrefixAnnouncement prefixAnnouncement;
+  prefixAnnouncement.setAnnouncedName("/Hello/World").setExpiration(1000_ms);
+  prefixAnnouncement.toData(m_keyChain);
+
   auto doAnnounce = [&] {
     return runPrefixAnnouncement([&] (const auto& success, const auto& failure) {
-      hdl = face.announcePrefix("/Hello/World", 1000_ms, std::nullopt, success, failure);
+      hdl = face.announcePrefix(prefixAnnouncement, success, failure);
     });
   };
+
   auto doUnreg = [&] {
     return runPrefixUnreg([&] (const auto& success, const auto& failure) {
       hdl.unregister(success, failure);
@@ -630,6 +635,18 @@ BOOST_AUTO_TEST_CASE(Handle)
   hdl.cancel();
   advanceClocks(1_ms);
   BOOST_CHECK(!doUnreg());
+
+  // check overload
+  auto doAnnounceWithoutObejct = [&] {
+    return runPrefixAnnouncement([&] (const auto& success, const auto& failure) {
+      hdl = face.announcePrefix("/Hello/World", 1000_ms, std::nullopt, success, failure);
+    });
+  };
+
+  BOOST_CHECK(doAnnounceWithoutObejct());
+  BOOST_CHECK(doUnreg());
+  hdl.cancel();
+  advanceClocks(1_ms);
 
   // cancel after destructing face
   auto face2 = make_unique<DummyClientFace>(m_io, m_keyChain);
