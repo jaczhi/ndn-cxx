@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2023 Regents of the University of California.
+ * Copyright (c) 2013-2024 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -22,111 +22,209 @@
 #ifndef NDN_CXX_MGMT_NFD_CONTROL_COMMAND_HPP
 #define NDN_CXX_MGMT_NFD_CONTROL_COMMAND_HPP
 
+#include "ndn-cxx/interest.hpp"
 #include "ndn-cxx/mgmt/nfd/control-parameters.hpp"
+
+#include <bitset>
 
 namespace ndn::nfd {
 
 /**
  * \ingroup management
- * \brief Base class of NFD `%ControlCommand`.
+ * \brief Represents an error in the parameters of the control command request or response.
+ */
+class ArgumentError : public std::invalid_argument
+{
+public:
+  using std::invalid_argument::invalid_argument;
+};
+
+
+/**
+ * \ingroup management
+ * \brief Implements decoding, encoding, and validation of ControlParameters in control commands.
+ *
+ * According to this format, the request parameters are encoded as a single GenericNameComponent
+ * in the Interest name, immediately after the command module and command verb components.
+ *
  * \sa https://redmine.named-data.net/projects/nfd/wiki/ControlCommand
  */
+class ControlParametersCommandFormat
+{
+public:
+  using ParametersType = ControlParameters;
+
+  /**
+   * \brief Declare a required field.
+   */
+  ControlParametersCommandFormat&
+  required(ControlParameterField field)
+  {
+    m_required.set(field);
+    return *this;
+  }
+
+  /**
+   * \brief Declare an optional field.
+   */
+  ControlParametersCommandFormat&
+  optional(ControlParameterField field)
+  {
+    m_optional.set(field);
+    return *this;
+  }
+
+  /**
+   * \brief Verify that all required fields are present, and all present fields
+   *        are either required or optional.
+   * \throw ArgumentError Parameters validation failed.
+   */
+  void
+  validate(const ControlParameters& params) const;
+
+  /**
+   * \brief Extract the parameters from the request \p interest.
+   */
+  static shared_ptr<ControlParameters>
+  decode(const Interest& interest, size_t prefixLen);
+
+  /**
+   * \brief Serialize the parameters into the request \p interest.
+   * \pre \p params are valid.
+   */
+  static void
+  encode(Interest& interest, const ControlParameters& params);
+
+private:
+  std::bitset<CONTROL_PARAMETER_UBOUND> m_required;
+  std::bitset<CONTROL_PARAMETER_UBOUND> m_optional;
+};
+
+
+/**
+ * \ingroup management
+ * \brief Base class for all NFD control commands.
+ * \tparam RequestFormatType  A class type that will handle the encoding and validation of the request
+ *                            parameters. Only ControlParametersCommandFormat is supported for now.
+ * \tparam ResponseFormatType A class type that will handle the encoding and validation of the response
+ *                            parameters. Only ControlParametersCommandFormat is supported for now.
+ * \sa https://redmine.named-data.net/projects/nfd/wiki/ControlCommand
+ */
+template<typename Derived,
+         typename RequestFormatType = ControlParametersCommandFormat,
+         typename ResponseFormatType = ControlParametersCommandFormat>
 class ControlCommand : noncopyable
 {
 public:
-  /** \brief Represents an error in ControlParameters.
+  using RequestFormat = RequestFormatType;
+  using ResponseFormat = ResponseFormatType;
+  using RequestParameters = typename RequestFormat::ParametersType;
+  using ResponseParameters = typename ResponseFormat::ParametersType;
+
+  ControlCommand() = delete;
+
+  /**
+   * \brief Return the command name (module + verb).
    */
-  class ArgumentError : public std::invalid_argument
+  static PartialName
+  getName()
   {
-  public:
-    using std::invalid_argument::invalid_argument;
-  };
+    return PartialName().append(Derived::s_module).append(Derived::s_verb);
+  }
 
-  virtual
-  ~ControlCommand();
-
-  /** \brief Validate request parameters.
-   *  \throw ArgumentError if parameters are invalid
+  /**
+   * \brief Construct request Interest.
+   * \throw ArgumentError if parameters are invalid
    */
-  virtual void
-  validateRequest(const ControlParameters& parameters) const;
-
-  /** \brief Apply default values to missing fields in request.
-   */
-  virtual void
-  applyDefaultsToRequest(ControlParameters& parameters) const;
-
-  /** \brief Validate response parameters.
-   *  \throw ArgumentError if parameters are invalid
-   */
-  virtual void
-  validateResponse(const ControlParameters& parameters) const;
-
-  /** \brief Apply default values to missing fields in response.
-   */
-  virtual void
-  applyDefaultsToResponse(ControlParameters& parameters) const;
-
-  /** \brief Construct the Name for a request Interest.
-   *  \throw ArgumentError if parameters are invalid
-   */
-  Name
-  getRequestName(const Name& commandPrefix, const ControlParameters& parameters) const;
-
-protected:
-  ControlCommand(const std::string& module, const std::string& verb);
-
-  class FieldValidator
+  static Interest
+  createRequest(Name commandPrefix, const RequestParameters& params)
   {
-  public:
-    FieldValidator();
+    validateRequest(params);
 
-    /** \brief Declare a required field.
-     */
-    FieldValidator&
-    required(ControlParameterField field)
-    {
-      m_required[field] = true;
-      return *this;
-    }
+    Interest request(commandPrefix.append(Derived::s_module).append(Derived::s_verb));
+    Derived::s_requestFormat.encode(request, params);
+    return request;
+  }
 
-    /** \brief Declare an optional field.
-     */
-    FieldValidator&
-    optional(ControlParameterField field)
-    {
-      m_optional[field] = true;
-      return *this;
-    }
-
-    /** \brief Verify that all required fields are present,
-     *         and all present fields are either required or optional.
-     *  \throw ArgumentError
-     */
-    void
-    validate(const ControlParameters& parameters) const;
-
-  private:
-    std::vector<bool> m_required;
-    std::vector<bool> m_optional;
-  };
-
-protected:
-  /** \brief FieldValidator for request ControlParameters.
-   *
-   *  Constructor of subclass should populate this validator.
+  /**
+   * \brief Extract parameters from request Interest.
    */
-  FieldValidator m_requestValidator;
-  /** \brief FieldValidator for response ControlParameters.
-   *
-   *  Constructor of subclass should populate this validator.
+  static shared_ptr<mgmt::ControlParametersBase>
+  parseRequest(const Interest& interest, size_t prefixLen)
+  {
+    // /<prefix>/<module>/<verb>
+    return Derived::s_requestFormat.decode(interest, prefixLen + 2);
+  }
+
+  /**
+   * \brief Validate request parameters.
+   * \throw ArgumentError if parameters are invalid
    */
-  FieldValidator m_responseValidator;
+  static void
+  validateRequest(const RequestParameters& params)
+  {
+    Derived::s_requestFormat.validate(params);
+    Derived::validateRequestImpl(params);
+  }
+
+  /**
+   * \brief Apply default values to missing fields in request.
+   */
+  static void
+  applyDefaultsToRequest(RequestParameters& params)
+  {
+    Derived::applyDefaultsToRequestImpl(params);
+  }
+
+  /**
+   * \brief Validate response parameters.
+   * \throw ArgumentError if parameters are invalid
+   */
+  static void
+  validateResponse(const ResponseParameters& params)
+  {
+    Derived::s_responseFormat.validate(params);
+    Derived::validateResponseImpl(params);
+  }
+
+  /**
+   * \brief Apply default values to missing fields in response.
+   */
+  static void
+  applyDefaultsToResponse(ResponseParameters& params)
+  {
+    Derived::applyDefaultsToResponseImpl(params);
+  }
 
 private:
-  name::Component m_module;
-  name::Component m_verb;
+  static void
+  validateRequestImpl(const RequestParameters&)
+  {
+  }
+
+  static void
+  applyDefaultsToRequestImpl(RequestParameters&)
+  {
+  }
+
+  static void
+  validateResponseImpl(const ResponseParameters&)
+  {
+  }
+
+  static void
+  applyDefaultsToResponseImpl(ResponseParameters&)
+  {
+  }
 };
+
+#define NDN_CXX_CONTROL_COMMAND(cmd, module, verb) \
+  private: \
+  friend ::ndn::nfd::ControlCommand<cmd>; \
+  static inline const ::ndn::name::Component s_module{module}; \
+  static inline const ::ndn::name::Component s_verb{verb}; \
+  static const RequestFormat s_requestFormat; \
+  static const ResponseFormat s_responseFormat
 
 
 /**
@@ -134,16 +232,15 @@ private:
  * \brief Represents a `faces/create` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/FaceMgmt#Create-a-face
  */
-class FaceCreateCommand : public ControlCommand
+class FaceCreateCommand : public ControlCommand<FaceCreateCommand>
 {
-public:
-  FaceCreateCommand();
+  NDN_CXX_CONTROL_COMMAND(FaceCreateCommand, "faces", "create");
 
-  void
-  applyDefaultsToRequest(ControlParameters& parameters) const override;
+  static void
+  applyDefaultsToRequestImpl(ControlParameters& parameters);
 
-  void
-  validateResponse(const ControlParameters& parameters) const override;
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
 };
 
 
@@ -152,20 +249,19 @@ public:
  * \brief Represents a `faces/update` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/FaceMgmt#Update-the-static-properties-of-a-face
  */
-class FaceUpdateCommand : public ControlCommand
+class FaceUpdateCommand : public ControlCommand<FaceUpdateCommand>
 {
-public:
-  FaceUpdateCommand();
+  NDN_CXX_CONTROL_COMMAND(FaceUpdateCommand, "faces", "update");
 
-  void
-  applyDefaultsToRequest(ControlParameters& parameters) const override;
+  static void
+  applyDefaultsToRequestImpl(ControlParameters& parameters);
 
   /**
    * \note This can only validate ControlParameters in a success response.
    *       Failure responses should be validated with validateRequest.
    */
-  void
-  validateResponse(const ControlParameters& parameters) const override;
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
 };
 
 
@@ -174,16 +270,15 @@ public:
  * \brief Represents a `faces/destroy` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/FaceMgmt#Destroy-a-face
  */
-class FaceDestroyCommand : public ControlCommand
+class FaceDestroyCommand : public ControlCommand<FaceDestroyCommand>
 {
-public:
-  FaceDestroyCommand();
+  NDN_CXX_CONTROL_COMMAND(FaceDestroyCommand, "faces", "destroy");
 
-  void
-  validateRequest(const ControlParameters& parameters) const override;
+  static void
+  validateRequestImpl(const ControlParameters& parameters);
 
-  void
-  validateResponse(const ControlParameters& parameters) const override;
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
 };
 
 
@@ -192,16 +287,15 @@ public:
  * \brief Represents a `fib/add-nexthop` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/FibMgmt#Add-a-nexthop
  */
-class FibAddNextHopCommand : public ControlCommand
+class FibAddNextHopCommand : public ControlCommand<FibAddNextHopCommand>
 {
-public:
-  FibAddNextHopCommand();
+  NDN_CXX_CONTROL_COMMAND(FibAddNextHopCommand, "fib", "add-nexthop");
 
-  void
-  applyDefaultsToRequest(ControlParameters& parameters) const override;
+  static void
+  applyDefaultsToRequestImpl(ControlParameters& parameters);
 
-  void
-  validateResponse(const ControlParameters& parameters) const override;
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
 };
 
 
@@ -210,16 +304,15 @@ public:
  * \brief Represents a `fib/remove-nexthop` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/FibMgmt#Remove-a-nexthop
  */
-class FibRemoveNextHopCommand : public ControlCommand
+class FibRemoveNextHopCommand : public ControlCommand<FibRemoveNextHopCommand>
 {
-public:
-  FibRemoveNextHopCommand();
+  NDN_CXX_CONTROL_COMMAND(FibRemoveNextHopCommand, "fib", "remove-nexthop");
 
-  void
-  applyDefaultsToRequest(ControlParameters& parameters) const override;
+  static void
+  applyDefaultsToRequestImpl(ControlParameters& parameters);
 
-  void
-  validateResponse(const ControlParameters& parameters) const override;
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
 };
 
 
@@ -228,10 +321,9 @@ public:
  * \brief Represents a `cs/config` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/CsMgmt#Update-configuration
  */
-class CsConfigCommand : public ControlCommand
+class CsConfigCommand : public ControlCommand<CsConfigCommand>
 {
-public:
-  CsConfigCommand();
+  NDN_CXX_CONTROL_COMMAND(CsConfigCommand, "cs", "config");
 };
 
 
@@ -240,16 +332,15 @@ public:
  * \brief Represents a `cs/erase` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/CsMgmt#Erase-entries
  */
-class CsEraseCommand : public ControlCommand
+class CsEraseCommand : public ControlCommand<CsEraseCommand>
 {
-public:
-  CsEraseCommand();
+  NDN_CXX_CONTROL_COMMAND(CsEraseCommand, "cs", "erase");
 
-  void
-  validateRequest(const ControlParameters& parameters) const override;
+  static void
+  validateRequestImpl(const ControlParameters& parameters);
 
-  void
-  validateResponse(const ControlParameters& parameters) const override;
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
 };
 
 
@@ -258,28 +349,26 @@ public:
  * \brief Represents a `strategy-choice/set` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/StrategyChoice#Set-the-strategy-for-a-namespace
  */
-class StrategyChoiceSetCommand : public ControlCommand
+class StrategyChoiceSetCommand : public ControlCommand<StrategyChoiceSetCommand>
 {
-public:
-  StrategyChoiceSetCommand();
+  NDN_CXX_CONTROL_COMMAND(StrategyChoiceSetCommand, "strategy-choice", "set");
 };
 
 
 /**
  * \ingroup management
- * \brief Represents a `strategy-choice/set` command.
+ * \brief Represents a `strategy-choice/unset` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/StrategyChoice#Unset-the-strategy-for-a-namespace
  */
-class StrategyChoiceUnsetCommand : public ControlCommand
+class StrategyChoiceUnsetCommand : public ControlCommand<StrategyChoiceUnsetCommand>
 {
-public:
-  StrategyChoiceUnsetCommand();
+  NDN_CXX_CONTROL_COMMAND(StrategyChoiceUnsetCommand, "strategy-choice", "unset");
 
-  void
-  validateRequest(const ControlParameters& parameters) const override;
+  static void
+  validateRequestImpl(const ControlParameters& parameters);
 
-  void
-  validateResponse(const ControlParameters& parameters) const override;
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
 };
 
 
@@ -288,16 +377,15 @@ public:
  * \brief Represents a `rib/register` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/RibMgmt#Register-a-route
  */
-class RibRegisterCommand : public ControlCommand
+class RibRegisterCommand : public ControlCommand<RibRegisterCommand>
 {
-public:
-  RibRegisterCommand();
+  NDN_CXX_CONTROL_COMMAND(RibRegisterCommand, "rib", "register");
 
-  void
-  applyDefaultsToRequest(ControlParameters& parameters) const override;
+  static void
+  applyDefaultsToRequestImpl(ControlParameters& parameters);
 
-  void
-  validateResponse(const ControlParameters& parameters) const override;
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
 };
 
 
@@ -306,16 +394,15 @@ public:
  * \brief Represents a `rib/unregister` command.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/RibMgmt#Unregister-a-route
  */
-class RibUnregisterCommand : public ControlCommand
+class RibUnregisterCommand : public ControlCommand<RibUnregisterCommand>
 {
-public:
-  RibUnregisterCommand();
+  NDN_CXX_CONTROL_COMMAND(RibUnregisterCommand, "rib", "unregister");
 
-  void
-  applyDefaultsToRequest(ControlParameters& parameters) const override;
+  static void
+  applyDefaultsToRequestImpl(ControlParameters& parameters);
 
-  void
-  validateResponse(const ControlParameters& parameters) const override;
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
 };
 
 } // namespace ndn::nfd

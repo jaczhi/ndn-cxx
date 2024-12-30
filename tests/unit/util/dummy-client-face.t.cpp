@@ -20,6 +20,7 @@
  */
 
 #include "ndn-cxx/util/dummy-client-face.hpp"
+#include "ndn-cxx/mgmt/nfd/control-command.hpp"
 #include "ndn-cxx/mgmt/nfd/controller.hpp"
 
 #include "tests/test-common.hpp"
