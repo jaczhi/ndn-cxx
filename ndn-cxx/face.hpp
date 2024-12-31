@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013-2023 Regents of the University of California.
+ * Copyright (c) 2013-2024 Regents of the University of California.
  *
  * This file is part of ndn-cxx library (NDN C++ library with eXperimental eXtensions).
  *
@@ -29,6 +29,7 @@
 #include "ndn-cxx/detail/cancel-handle.hpp"
 #include "ndn-cxx/encoding/nfd-constants.hpp"
 #include "ndn-cxx/lp/nack.hpp"
+#include "ndn-cxx/prefix-announcement.hpp"
 #include "ndn-cxx/security/key-chain.hpp"
 #include "ndn-cxx/security/signing-info.hpp"
 
@@ -94,6 +95,15 @@ public:
   {
   public:
     using std::runtime_error::runtime_error;
+  };
+
+  /**
+   * @brief Represents an error in parameters provided to a Face method.
+   */
+  class ArgumentError : public std::invalid_argument
+  {
+  public:
+    using std::invalid_argument::invalid_argument;
   };
 
   /**
@@ -338,6 +348,49 @@ public: // producer
                  const RegisterPrefixFailureCallback& onFailure,
                  const security::SigningInfo& signingInfo = security::SigningInfo(),
                  uint64_t flags = nfd::ROUTE_FLAG_CHILD_INHERIT);
+
+  /**
+   * @brief Register prefix with the connected NDN forwarder using the Prefix Announcement protocol.
+   * @param prefixAnnouncement The signed Prefix Announcement object to send to the forwarder
+   * @param onSuccess          A callback to be called when prefixRegister command succeeds
+   * @param onFailure          A callback to be called when prefixRegister command fails
+   * @param signingInfo        Signing parameters for the Interest. When omitted, default parameters will be used.
+   *
+   * @return A handle for unregistering the prefix.
+   * @throw ArgumentError The Prefix Announcement object has not been signed and has no wire representation (e.g., by
+   *                      calling `.toData()`).
+   */
+  RegisteredPrefixHandle
+  announcePrefix(const PrefixAnnouncement& prefixAnnouncement,
+                 const RegisterPrefixSuccessCallback& onSuccess,
+                 const RegisterPrefixFailureCallback& onFailure,
+                 const security::SigningInfo& signingInfo = security::SigningInfo());
+
+  /**
+   * @brief Register prefix with the connected NDN forwarder using the Prefix Announcement protocol.
+   * @param prefix                        A prefix to register with the connected NDN forwarder
+   * @param expiration                    The duration for which the prefix announcement remains valid
+   * @param validityPeriod                The absolute time range in which the prefix announcement remains valid, or
+   *                                      `std::nullopt`. When both ExpirationPeriod and ValidityPeriod are present, the
+   *                                      most restrictive constraint applies.
+   * @param onSuccess                     A callback to be called when prefixRegister command succeeds
+   * @param onFailure                     A callback to be called when prefixRegister command fails
+   * @param signingInfo                   Signing parameters for the Interest. When omitted, default parameters will be
+   *                                      used.
+   * @param prefixAnnouncementSigningInfo Signing parameters for the Prefix Announcement object to be included in the
+   *                                      ApplicationParameters of the interest. When omitted, default parameters will
+   *                                      be used.
+   *
+   * @return A handle for unregistering the prefix.
+   */
+  RegisteredPrefixHandle
+  announcePrefix(const Name& prefix,
+                 const time::milliseconds& expiration,
+                 const std::optional<security::ValidityPeriod>& validityPeriod,
+                 const RegisterPrefixSuccessCallback& onSuccess,
+                 const RegisterPrefixFailureCallback& onFailure,
+                 const security::SigningInfo& signingInfo = security::SigningInfo(),
+                 const security::SigningInfo& prefixAnnouncementSigningInfo = security::SigningInfo());
 
   /**
    * @brief Publish a Data packet.
