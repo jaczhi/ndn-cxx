@@ -213,19 +213,35 @@ DummyClientFace::enableRegistrationReply(uint64_t faceId)
   onSendInterest.connect([=] (const Interest& interest) {
     static const Name localhostRibPrefix("/localhost/nfd/rib");
     static const name::Component registerVerb("register");
+    static const name::Component announceVerb("announce");
     const auto& name = interest.getName();
     if (name.size() <= 4 || !localhostRibPrefix.isPrefixOf(name))
       return;
 
-    nfd::ControlParameters params(name[4].blockFromValue());
-    if (!params.hasFaceId()) {
+    nfd::ControlParameters params;
+    if (name[3] == announceVerb) {
+      auto appParameters = interest.getApplicationParameters().blockFromValue();
+      auto data = Data(appParameters);
+      auto prefixAnnouncement = ndn::PrefixAnnouncement(data);
+
+      params.setName(prefixAnnouncement.getAnnouncedName());
       params.setFaceId(faceId);
+      params.setOrigin(ndn::nfd::ROUTE_ORIGIN_PREFIXANN);
+      params.setCost(2048);
+      params.setFlags(ndn::nfd::ROUTE_FLAG_CHILD_INHERIT);
+      params.setExpirationPeriod(prefixAnnouncement.getExpiration());
     }
-    if (!params.hasOrigin()) {
-      params.setOrigin(nfd::ROUTE_ORIGIN_APP);
-    }
-    if (!params.hasCost() && name[3] == registerVerb) {
-      params.setCost(0);
+    else {
+      params = nfd::ControlParameters(name[4].blockFromValue());
+      if (!params.hasFaceId()) {
+        params.setFaceId(faceId);
+      }
+      if (!params.hasOrigin()) {
+        params.setOrigin(nfd::ROUTE_ORIGIN_APP);
+      }
+      if (!params.hasCost() && name[3] == registerVerb) {
+        params.setCost(0);
+      }
     }
 
     nfd::ControlResponse resp;

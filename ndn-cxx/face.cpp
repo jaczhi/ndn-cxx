@@ -252,6 +252,46 @@ Face::registerPrefix(const Name& prefix,
   return RegisteredPrefixHandle(m_impl, id);
 }
 
+RegisteredPrefixHandle
+Face::announcePrefix(const PrefixAnnouncement& prefixAnnouncement,
+                     const RegisterPrefixSuccessCallback& onSuccess,
+                     const RegisterPrefixFailureCallback& onFailure,
+                     const security::SigningInfo& signingInfo)
+{
+  if (!prefixAnnouncement.getData().has_value()) {
+    NDN_THROW(Face::ArgumentError("The Prefix Announcement object has no wire representation"));
+  }
+
+  nfd::CommandOptions options;
+  options.setSigningInfo(signingInfo);
+
+  auto id = m_impl->announcePrefix(prefixAnnouncement, onSuccess, onFailure, options, std::nullopt, nullptr);
+  return RegisteredPrefixHandle(m_impl, id);
+}
+
+RegisteredPrefixHandle
+Face::announcePrefix(const Name& prefix,
+                     const time::milliseconds& expiration,
+                     const std::optional<security::ValidityPeriod>& validityPeriod,
+                     const RegisterPrefixSuccessCallback& onSuccess,
+                     const RegisterPrefixFailureCallback& onFailure,
+                     const security::SigningInfo& signingInfo,
+                     const security::SigningInfo& prefixAnnouncementSigningInfo)
+{
+  nfd::CommandOptions options;
+  options.setSigningInfo(signingInfo);
+
+  PrefixAnnouncement prefixAnnouncement;
+  prefixAnnouncement.setAnnouncedName(prefix)
+                    .setExpiration(expiration)
+                    .setValidityPeriod(validityPeriod);
+
+  m_impl->signPrefixAnnouncement(prefixAnnouncement, prefixAnnouncementSigningInfo);
+
+  auto id = m_impl->announcePrefix(prefixAnnouncement, onSuccess, onFailure, options, std::nullopt, nullptr);
+  return RegisteredPrefixHandle(m_impl, id);
+}
+
 void
 Face::doProcessEvents(time::milliseconds timeout, bool keepRunning)
 {
