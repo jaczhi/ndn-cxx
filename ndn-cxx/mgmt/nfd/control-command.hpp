@@ -24,6 +24,7 @@
 
 #include "ndn-cxx/interest.hpp"
 #include "ndn-cxx/mgmt/nfd/control-parameters.hpp"
+#include "ndn-cxx/prefix-announcement.hpp"
 
 #include <bitset>
 
@@ -100,14 +101,67 @@ private:
   std::bitset<CONTROL_PARAMETER_UBOUND> m_optional;
 };
 
+/**
+ * \ingroup management
+ * \brief Implements decoding, encoding, and validation of ApplicationParameters in control commands.
+ *
+ * According to this format, the request parameters are encoded as a Block within the
+ * ApplicationParameters in the Interest.
+ *
+ * \sa https://redmine.named-data.net/projects/nfd/wiki/ControlCommand
+ */
+class ApplicationParametersCommandFormat
+{
+public:
+  using ParametersType = Block;
+
+  /**
+   * \brief Provide a validator for checking the format of the Block information.
+   *
+   * The validator should throw an std::exception if an invalid format is encountered.
+   */
+  ApplicationParametersCommandFormat&
+  setValidator(std::function<void(const Block&)> validator)
+  {
+    m_validator = validator;
+    return *this;
+  }
+
+  /**
+   * \brief Verify that the ApplicationParameters block's information is not malformed.
+   * \throw ArgumentError Parameters validation failed.
+   */
+  void
+  validate(const Block& block) const;
+
+  /**
+   * \brief Extract the ApplicationParameters block from the request \p interest.
+   *
+   * Note that the \p prefixLen parameter is unused.
+   */
+  static shared_ptr<Block>
+  decode(const Interest& interest, size_t prefixLen);
+
+  /**
+   * \brief Apply the block as the ApplicationParameters for the request \p interest.
+   * \pre \p block contains valid information.
+   */
+  static void
+  encode(Interest& interest, const Block& block);
+
+private:
+  std::optional<std::function<void(const Block&)>> m_validator;
+};
 
 /**
  * \ingroup management
  * \brief Base class for all NFD control commands.
  * \tparam RequestFormatType  A class type that will handle the encoding and validation of the request
- *                            parameters. Only ControlParametersCommandFormat is supported for now.
+ *                            parameters. The type should be ApplicationParametersCommandFormat or
+ *                            ControlParametersCommandFormat.
  * \tparam ResponseFormatType A class type that will handle the encoding and validation of the response
- *                            parameters. Only ControlParametersCommandFormat is supported for now.
+ *                            parameters. The type should be ApplicationParametersCommandFormat or
+ *                            ControlParametersCommandFormat.
  * \sa https://redmine.named-data.net/projects/nfd/wiki/ControlCommand
  */
 template<typename Derived,
@@ -218,9 +272,17 @@ private:
   }
 };
 
-#define NDN_CXX_CONTROL_COMMAND(cmd, module, verb) \
+#define NDN_CXX_CONTROL_COMMAND_3(cmd, module, verb) \
   private: \
   friend ::ndn::nfd::ControlCommand<cmd>; \
+  static inline const ::ndn::name::Component s_module{module}; \
+  static inline const ::ndn::name::Component s_verb{verb}; \
+  static const RequestFormat s_requestFormat; \
+  static const ResponseFormat s_responseFormat
+
+#define NDN_CXX_CONTROL_COMMAND_5(cmd, reqFormat, resFormat, module, verb) \
+  private: \
+  friend ::ndn::nfd::ControlCommand<cmd, reqFormat, resFormat>; \
   static inline const ::ndn::name::Component s_module{module}; \
   static inline const ::ndn::name::Component s_verb{verb}; \
   static const RequestFormat s_requestFormat; \
@@ -234,7 +296,7 @@ private:
  */
 class FaceCreateCommand : public ControlCommand<FaceCreateCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(FaceCreateCommand, "faces", "create");
+  NDN_CXX_CONTROL_COMMAND_3(FaceCreateCommand, "faces", "create");
 
   static void
   applyDefaultsToRequestImpl(ControlParameters& parameters);
@@ -251,7 +313,7 @@ class FaceCreateCommand : public ControlCommand<FaceCreateCommand>
  */
 class FaceUpdateCommand : public ControlCommand<FaceUpdateCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(FaceUpdateCommand, "faces", "update");
+  NDN_CXX_CONTROL_COMMAND_3(FaceUpdateCommand, "faces", "update");
 
   static void
   applyDefaultsToRequestImpl(ControlParameters& parameters);
@@ -272,7 +334,7 @@ class FaceUpdateCommand : public ControlCommand<FaceUpdateCommand>
  */
 class FaceDestroyCommand : public ControlCommand<FaceDestroyCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(FaceDestroyCommand, "faces", "destroy");
+  NDN_CXX_CONTROL_COMMAND_3(FaceDestroyCommand, "faces", "destroy");
 
   static void
   validateRequestImpl(const ControlParameters& parameters);
@@ -289,7 +351,7 @@ class FaceDestroyCommand : public ControlCommand<FaceDestroyCommand>
  */
 class FibAddNextHopCommand : public ControlCommand<FibAddNextHopCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(FibAddNextHopCommand, "fib", "add-nexthop");
+  NDN_CXX_CONTROL_COMMAND_3(FibAddNextHopCommand, "fib", "add-nexthop");
 
   static void
   applyDefaultsToRequestImpl(ControlParameters& parameters);
@@ -306,7 +368,7 @@ class FibAddNextHopCommand : public ControlCommand<FibAddNextHopCommand>
  */
 class FibRemoveNextHopCommand : public ControlCommand<FibRemoveNextHopCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(FibRemoveNextHopCommand, "fib", "remove-nexthop");
+  NDN_CXX_CONTROL_COMMAND_3(FibRemoveNextHopCommand, "fib", "remove-nexthop");
 
   static void
   applyDefaultsToRequestImpl(ControlParameters& parameters);
@@ -323,7 +385,7 @@ class FibRemoveNextHopCommand : public ControlCommand<FibRemoveNextHopCommand>
  */
 class CsConfigCommand : public ControlCommand<CsConfigCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(CsConfigCommand, "cs", "config");
+  NDN_CXX_CONTROL_COMMAND_3(CsConfigCommand, "cs", "config");
 };
 
 
@@ -334,7 +396,7 @@ class CsConfigCommand : public ControlCommand<CsConfigCommand>
  */
 class CsEraseCommand : public ControlCommand<CsEraseCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(CsEraseCommand, "cs", "erase");
+  NDN_CXX_CONTROL_COMMAND_3(CsEraseCommand, "cs", "erase");
 
   static void
   validateRequestImpl(const ControlParameters& parameters);
@@ -351,7 +413,7 @@ class CsEraseCommand : public ControlCommand<CsEraseCommand>
  */
 class StrategyChoiceSetCommand : public ControlCommand<StrategyChoiceSetCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(StrategyChoiceSetCommand, "strategy-choice", "set");
+  NDN_CXX_CONTROL_COMMAND_3(StrategyChoiceSetCommand, "strategy-choice", "set");
 };
 
 
@@ -362,7 +424,7 @@ class StrategyChoiceSetCommand : public ControlCommand<StrategyChoiceSetCommand>
  */
 class StrategyChoiceUnsetCommand : public ControlCommand<StrategyChoiceUnsetCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(StrategyChoiceUnsetCommand, "strategy-choice", "unset");
+  NDN_CXX_CONTROL_COMMAND_3(StrategyChoiceUnsetCommand, "strategy-choice", "unset");
 
   static void
   validateRequestImpl(const ControlParameters& parameters);
@@ -379,7 +441,7 @@ class StrategyChoiceUnsetCommand : public ControlCommand<StrategyChoiceUnsetComm
  */
 class RibRegisterCommand : public ControlCommand<RibRegisterCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(RibRegisterCommand, "rib", "register");
+  NDN_CXX_CONTROL_COMMAND_3(RibRegisterCommand, "rib", "register");
 
   static void
   applyDefaultsToRequestImpl(ControlParameters& parameters);
@@ -396,10 +458,26 @@ class RibRegisterCommand : public ControlCommand<RibRegisterCommand>
  */
 class RibUnregisterCommand : public ControlCommand<RibUnregisterCommand>
 {
-  NDN_CXX_CONTROL_COMMAND(RibUnregisterCommand, "rib", "unregister");
+  NDN_CXX_CONTROL_COMMAND_3(RibUnregisterCommand, "rib", "unregister");
 
   static void
   applyDefaultsToRequestImpl(ControlParameters& parameters);
+
+  static void
+  validateResponseImpl(const ControlParameters& parameters);
+};
+
+/**
+ * \ingroup management
+ * \brief Represents a `rib/announce` command.
+ * \sa https://redmine.named-data.net/projects/nfd/wiki/PrefixAnnouncement
+ */
+class RibAnnounceCommand : public ControlCommand<RibAnnounceCommand,
+                                                 ApplicationParametersCommandFormat,
+                                                 ControlParametersCommandFormat>
+{
+  NDN_CXX_CONTROL_COMMAND_5(RibAnnounceCommand, ApplicationParametersCommandFormat, ControlParametersCommandFormat,
+                            "rib", "announce");
 
   static void
   validateResponseImpl(const ControlParameters& parameters);

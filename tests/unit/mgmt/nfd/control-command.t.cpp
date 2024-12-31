@@ -20,6 +20,7 @@
  */
 
 #include "ndn-cxx/mgmt/nfd/control-command.hpp"
+#include "ndn-cxx/prefix-announcement.hpp"
 
 #include "tests/boost-test.hpp"
 
@@ -490,6 +491,55 @@ BOOST_AUTO_TEST_CASE(RibUnregister)
   p2.unsetFaceId();
   BOOST_CHECK_NO_THROW(Command::validateRequest(p2));
   BOOST_CHECK_THROW(Command::validateResponse(p2), ArgumentError);
+}
+
+BOOST_AUTO_TEST_CASE(RibAnnounce)
+{
+  using Command = RibAnnounceCommand;
+
+  // Good request, good response
+  PrefixAnnouncement prefixAnnouncement;
+  prefixAnnouncement.setAnnouncedName("ndn:/");
+  prefixAnnouncement.setExpiration(1000_ms);
+  // Dummy keychain
+  KeyChain keyChain;
+  auto block1 = prefixAnnouncement.toData(keyChain).wireEncode();
+
+  BOOST_CHECK_NO_THROW(Command::validateRequest(block1));
+
+  ControlParameters p1;
+  p1.setName("ndn:/")
+    .setFaceId(22)
+    .setOrigin(ndn::nfd::ROUTE_ORIGIN_PREFIXANN)
+    .setCost(2048)
+    .setFlags(ndn::nfd::ROUTE_FLAG_CHILD_INHERIT)
+    .setExpirationPeriod(1000_ms);
+
+  BOOST_CHECK_NO_THROW(Command::validateResponse(p1));
+
+  Name n1;
+  BOOST_CHECK_NO_THROW(n1 = Command::createRequest("/PREFIX", block1).getName());
+  BOOST_CHECK(Name("ndn:/PREFIX/rib/announce").isPrefixOf(n1));
+
+  // Bad response (FaceId must be valid)
+  ControlParameters p2;
+  p2.setName("ndn:/")
+    .setFaceId(0)
+    .setOrigin(ndn::nfd::ROUTE_ORIGIN_PREFIXANN)
+    .setCost(2048)
+    .setFlags(ndn::nfd::ROUTE_FLAG_CHILD_INHERIT)
+    .setExpirationPeriod(1000_ms);
+  BOOST_CHECK_THROW(Command::validateResponse(p2), ArgumentError);
+
+  // Bad request (Request should have valid block corresponding to prefix announcement)
+  Block block2;
+  BOOST_CHECK_THROW(Command::validateRequest(block2), ArgumentError);
+
+  auto invalidData = Data("test").setContentType(5);
+  keyChain.sign(invalidData);
+  block2 = invalidData.wireEncode();
+
+  BOOST_CHECK_THROW(Command::validateRequest(block2), ArgumentError);
 }
 
 BOOST_AUTO_TEST_SUITE_END() // TestControlCommand

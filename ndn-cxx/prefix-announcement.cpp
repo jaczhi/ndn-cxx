@@ -29,21 +29,9 @@ PrefixAnnouncement::PrefixAnnouncement() = default;
 PrefixAnnouncement::PrefixAnnouncement(Data data)
   : m_data(std::move(data))
 {
-  const Name& dataName = m_data->getName();
-  if (dataName.size() < 3 || dataName[-3] != getKeywordComponent() ||
-      !dataName[-2].isVersion() || !dataName[-1].isSegment()) {
-    NDN_THROW(Error("Data is not a prefix announcement: wrong name structure"));
-  }
-  m_announcedName = dataName.getPrefix(-3);
+  validateFormat(*m_data);
 
-  if (m_data->getContentType() != tlv::ContentType_PrefixAnn) {
-    NDN_THROW(Error("Data is not a prefix announcement: ContentType is " +
-                    to_string(m_data->getContentType())));
-  }
-
-  if (m_data->getContent().value_size() == 0) {
-    NDN_THROW(Error("Prefix announcement is empty"));
-  }
+  m_announcedName = m_data->getName().getPrefix(-3);
 
   const Block& payload = m_data->getContent();
   payload.parse();
@@ -53,13 +41,6 @@ PrefixAnnouncement::PrefixAnnouncement(Data data)
   auto validityElement = payload.find(tlv::ValidityPeriod);
   if (validityElement != payload.elements_end()) {
     m_validity.emplace(*validityElement);
-  }
-
-  for (const Block& element : payload.elements()) {
-    if (element.type() != tlv::nfd::ExpirationPeriod && element.type() != tlv::ValidityPeriod &&
-        tlv::isCriticalType(element.type())) {
-      NDN_THROW(Error("Unrecognized element of critical type " + to_string(element.type())));
-    }
   }
 }
 
@@ -121,6 +102,35 @@ PrefixAnnouncement::getKeywordComponent()
 {
   static const name::Component nc(tlv::KeywordNameComponent, {'P', 'A'});
   return nc;
+}
+
+void
+PrefixAnnouncement::validateFormat(const Data& data)
+{
+  const Name& dataName = data.getName();
+  if (dataName.size() < 3 || dataName[-3] != getKeywordComponent() ||
+      !dataName[-2].isVersion() || !dataName[-1].isSegment()) {
+    NDN_THROW(Error("Data is not a prefix announcement: wrong name structure"));
+  }
+
+  if (data.getContentType() != tlv::ContentType_PrefixAnn) {
+    NDN_THROW(Error("Data is not a prefix announcement: ContentType is " +
+                    to_string(data.getContentType())));
+  }
+
+  if (data.getContent().value_size() == 0) {
+    NDN_THROW(Error("Prefix announcement is empty"));
+  }
+
+  const Block& payload = data.getContent();
+  payload.parse();
+
+  for (const Block& element : payload.elements()) {
+    if (element.type() != tlv::nfd::ExpirationPeriod && element.type() != tlv::ValidityPeriod &&
+        tlv::isCriticalType(element.type())) {
+      NDN_THROW(Error("Unrecognized element of critical type " + to_string(element.type())));
+    }
+  }
 }
 
 std::ostream&

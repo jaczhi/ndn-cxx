@@ -126,6 +126,12 @@ public: // static methods
   static const name::Component&
   getKeywordComponent();
 
+  /**
+   * @brief Checks if the data conforms to the PrefixAnnouncement object format.
+   */
+  static void
+  validateFormat(const Data& data);
+
 private: // non-member operators
   // NOTE: the following "hidden friend" operators are available via
   //       argument-dependent lookup only and must be defined inline.

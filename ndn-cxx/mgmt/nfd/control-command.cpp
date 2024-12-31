@@ -62,6 +62,32 @@ ControlParametersCommandFormat::encode(Interest& interest, const ControlParamete
   interest.setName(name);
 }
 
+void
+ApplicationParametersCommandFormat::validate(const Block& block) const
+{
+  if (m_validator) {
+    try {
+      (*m_validator)(block);
+    }
+    catch (const std::exception& e) {
+      NDN_THROW(ArgumentError(e.what()));
+    }
+  }
+}
+
+shared_ptr<Block>
+ApplicationParametersCommandFormat::decode(const Interest& interest, size_t)
+{
+  auto block = interest.getApplicationParameters().blockFromValue();
+  return make_shared<Block>(block);
+}
+
+void
+ApplicationParametersCommandFormat::encode(Interest& interest, const Block& block)
+{
+  interest.setApplicationParameters(block);
+}
+
 const FaceCreateCommand::RequestFormat FaceCreateCommand::s_requestFormat =
     RequestFormat()
     .required(CONTROL_PARAMETER_URI)
@@ -341,6 +367,26 @@ RibUnregisterCommand::applyDefaultsToRequestImpl(ControlParameters& parameters)
 
 void
 RibUnregisterCommand::validateResponseImpl(const ControlParameters& parameters)
+{
+  if (parameters.getFaceId() == INVALID_FACE_ID) {
+    NDN_THROW(ArgumentError("FaceId must be valid"));
+  }
+}
+
+const RibAnnounceCommand::RequestFormat RibAnnounceCommand::s_requestFormat =
+  RequestFormat()
+  .setValidator([] (const Block& block) { PrefixAnnouncement::validateFormat(Data(block)); });
+const RibAnnounceCommand::ResponseFormat RibAnnounceCommand::s_responseFormat =
+  ResponseFormat()
+  .required(CONTROL_PARAMETER_NAME)
+  .required(CONTROL_PARAMETER_FACE_ID)
+  .required(CONTROL_PARAMETER_ORIGIN)
+  .required(CONTROL_PARAMETER_COST)
+  .required(CONTROL_PARAMETER_FLAGS)
+  .optional(CONTROL_PARAMETER_EXPIRATION_PERIOD);
+
+void
+RibAnnounceCommand::validateResponseImpl(const ControlParameters& parameters)
 {
   if (parameters.getFaceId() == INVALID_FACE_ID) {
     NDN_THROW(ArgumentError("FaceId must be valid"));
